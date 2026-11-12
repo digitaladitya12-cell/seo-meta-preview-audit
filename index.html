@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="A lightweight, privacy-friendly SEO snippet and on-page checklist tool.">
+  <title>SEO Meta Preview & Audit</title>
+  <style>
+    :root { font-family: Inter, system-ui, -apple-system, Segoe UI, sans-serif; color:#172033; background:#f4f6fb; }
+    * { box-sizing:border-box; }
+    body { margin:0; padding:28px 16px; }
+    main { max-width:980px; margin:auto; }
+    h1 { margin:0 0 8px; font-size:clamp(26px,4vw,36px); }
+    .intro { color:#5b6475; margin:0 0 24px; }
+    .layout { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+    section { background:white; border:1px solid #e1e6ef; border-radius:14px; padding:20px; box-shadow:0 4px 16px #15213a0a; }
+    h2 { font-size:18px; margin:0 0 16px; }
+    label { display:block; font-weight:650; font-size:13px; margin:14px 0 6px; }
+    input, textarea, select { width:100%; border:1px solid #cfd6e2; border-radius:8px; padding:11px 12px; font:inherit; background:#fff; }
+    textarea { min-height:82px; resize:vertical; }
+    .count { color:#687386; font-size:12px; text-align:right; margin-top:4px; }
+    .preview { border:1px solid #e3e7ee; border-radius:10px; padding:14px; margin-top:10px; }
+    .url { color:#188038; font-size:13px; overflow-wrap:anywhere; }
+    .result-title { color:#1a0dab; font-size:20px; margin:5px 0; line-height:1.3; }
+    .desc { color:#4d5156; font-size:14px; line-height:1.5; }
+    .checks { display:grid; gap:9px; }
+    .check { padding:10px 12px; border-radius:8px; background:#f6f8fb; font-size:14px; }
+    .good { border-left:4px solid #169b62; }
+    .warn { border-left:4px solid #e39a19; }
+    .bad { border-left:4px solid #d94a4a; }
+    button { margin-top:16px; border:0; background:#172b4d; color:white; border-radius:8px; padding:11px 15px; font-weight:650; cursor:pointer; }
+    button:hover { background:#274574; }
+    .muted { color:#687386; font-size:12px; line-height:1.5; }
+    footer { text-align:center; color:#778195; font-size:12px; margin:22px 0 4px; }
+    @media(max-width:720px){ .layout{grid-template-columns:1fr;} body{padding:18px 12px;} }
+  </style>
+</head>
+<body>
+<main>
+  <h1>SEO Meta Preview &amp; Audit</h1>
+  <p class="intro">Preview a search snippet and run quick on-page checks. Your inputs stay in this browser; nothing is uploaded.</p>
+  <div class="layout">
+    <section>
+      <h2>Page details</h2>
+      <label for="url">Page URL</label>
+      <input id="url" type="url" placeholder="https://example.com/page">
+      <label for="title">SEO title</label>
+      <input id="title" maxlength="300" placeholder="Write a descriptive page title">
+      <div class="count" id="titleCount">0 characters</div>
+      <label for="description">Meta description</label>
+      <textarea id="description" maxlength="500" placeholder="Summarize the page clearly and naturally"></textarea>
+      <div class="count" id="descriptionCount">0 characters</div>
+      <label for="keyword">Primary keyword</label>
+      <input id="keyword" placeholder="e.g. addiction treatment">
+      <label for="h1">Main H1</label>
+      <input id="h1" placeholder="Main page heading">
+      <label for="canonical">Canonical URL</label>
+      <input id="canonical" type="url" placeholder="https://example.com/page">
+      <label for="robots">Robots directive</label>
+      <select id="robots">
+        <option value="index, follow">index, follow</option>
+        <option value="noindex, follow">noindex, follow</option>
+        <option value="index, nofollow">index, nofollow</option>
+        <option value="noindex, nofollow">noindex, nofollow</option>
+      </select>
+      <button id="clear" type="button">Clear form</button>
+    </section>
+    <section>
+      <h2>Search snippet preview</h2>
+      <div class="preview">
+        <div class="url" id="previewUrl">example.com › page</div>
+        <div class="result-title" id="previewTitle">Your SEO title will appear here</div>
+        <div class="desc" id="previewDescription">Your meta description preview will appear here. Write a useful summary that matches the page content.</div>
+      </div>
+      <h2 style="margin-top:22px">Quick audit</h2>
+      <div class="checks" id="checks" aria-live="polite"></div>
+      <p class="muted">Guidance is approximate, not a Google ranking guarantee. Google may rewrite titles and snippets, and character counts do not predict pixel-width truncation exactly.</p>
+    </section>
+  </div>
+  <footer>SEO Meta Preview &amp; Audit · Open-source starter project · MIT License</footer>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+const fields = ['url','title','description','keyword','h1','canonical','robots'];
+function update() {
+  const url = $('url').value.trim(), title = $('title').value.trim();
+  const desc = $('description').value.trim(), kw = $('keyword').value.trim().toLowerCase();
+  const h1 = $('h1').value.trim(), canonical = $('canonical').value.trim();
+  const robots = $('robots').value;
+  $('titleCount').textContent = `${title.length} characters`;
+  $('descriptionCount').textContent = `${desc.length} characters`;
+  $('previewTitle').textContent = title || 'Your SEO title will appear here';
+  $('previewDescription').textContent = desc || 'Your meta description preview will appear here. Write a useful summary that matches the page content.';
+  try {
+    const u = new URL(url);
+    $('previewUrl').textContent = u.hostname + u.pathname.replace(/\/$/, '').replaceAll('/', ' › ');
+  } catch { $('previewUrl').textContent = url || 'example.com › page'; }
+  const checks = [];
+  const add = (state, message) => checks.push(`<div class="check ${state}">${message}</div>`);
+  if (!title) add('bad','Add an SEO title.');
+  else if (title.length < 30) add('warn',`Title is short (${title.length} characters). Consider adding useful context.`);
+  else if (title.length > 60) add('warn',`Title is long (${title.length} characters). Review whether it can be more concise.`);
+  else add('good',`Title length looks reasonable (${title.length} characters).`);
+  if (!desc) add('bad','Add a meta description.');
+  else if (desc.length < 120) add('warn',`Description is brief (${desc.length} characters). Consider adding meaningful detail.`);
+  else if (desc.length > 160) add('warn',`Description is long (${desc.length} characters). Consider tightening it.`);
+  else add('good',`Description length looks reasonable (${desc.length} characters).`);
+  if (!kw) add('warn','Enter a primary keyword to check keyword usage.');
+  else {
+    add(title.toLowerCase().includes(kw) ? 'good' : 'warn', title.toLowerCase().includes(kw) ? 'Primary keyword appears in the title.' : 'Primary keyword is not found in the title.');
+    add(desc.toLowerCase().includes(kw) ? 'good' : 'warn', desc.toLowerCase().includes(kw) ? 'Primary keyword appears in the description.' : 'Primary keyword is not found in the description.');
+    add(h1.toLowerCase().includes(kw) ? 'good' : 'warn', h1.toLowerCase().includes(kw) ? 'Primary keyword appears in the H1.' : 'Primary keyword is not found in the H1.');
+  }
+  add(h1 ? 'good' : 'warn', h1 ? 'Main H1 is provided. Confirm the page has one clear primary heading.' : 'Add the main H1 heading.');
+  if (!canonical) add('warn','Canonical URL is not provided. Check whether the page needs a canonical tag.');
+  else add('good','Canonical URL is provided. Confirm it points to the preferred indexable URL.');
+  add(robots.startsWith('noindex') ? 'bad' : 'good', `Robots directive: ${robots}${robots.startsWith('noindex') ? ' — this tells search engines not to index the page.' : ' — indexing is allowed by this directive.'}`);
+  $('checks').innerHTML = checks.join('');
+}
+fields.forEach(id => $(id).addEventListener('input', update));
+$('clear').addEventListener('click', () => { fields.forEach(id => $(id).value = id === 'robots' ? 'index, follow' : ''); update(); });
+update();
+</script>
+</body>
+</html>
